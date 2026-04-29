@@ -34,7 +34,7 @@ jobs:
         if: steps.checkov.outcome == 'failure'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::074008725557:role/GitHubActionsBedrockRole
+          role-to-assume: arn:aws:iam::{account_id}:role/{role_name}
           aws-region: us-east-1
 
       - name: Install Python Dependencies
