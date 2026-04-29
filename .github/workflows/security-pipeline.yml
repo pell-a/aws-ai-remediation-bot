@@ -1,0 +1,49 @@
+name: AWS AI Remediation
+
+on:
+  push:
+    branches:
+      - main
+
+# Required for OIDC authentication to AWS
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  scan_and_fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Run Checkov Security Scan
+        id: checkov
+        run: checkov -f main.tf --output json > checkov_results.json
+        continue-on-error: true
+
+      - name: Configure AWS Credentials via OIDC
+        if: steps.checkov.outcome == 'failure'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::074008725557:role/GitHubActionsBedrockRole
+          aws-region: us-east-1
+
+      - name: Install Python Dependencies
+        if: steps.checkov.outcome == 'failure'
+        run: pip install boto3 PyGithub
+
+      - name: Run AI Remediation Script
+        if: steps.checkov.outcome == 'failure'
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python remediator.py
